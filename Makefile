@@ -149,7 +149,7 @@ endif
 
 
 LIBXMLPP2-6_LIB := /usr/local/lib/libxml++-2.6
-LIBXMLPP2-6_LIB_2 := /usr/lib/libxml++-2.6
+LIBXMLPP2-6_LIB_2 := /usr/lib64/libxml++-2.6
 ifneq ($(wildcard $(LIBXMLPP2-6_LIB)),)
   HAS_LIBXMLPP2-6_LIB := 1
 else ifneq ($(wildcard $(LIBXMLPP2-6_LIB_2)),)
@@ -159,7 +159,7 @@ else
 endif
 
 GLIBMM2-4_LIB := /usr/local/lib/libglibmm-2.4.*
-GLIBMM2-4_LIB_2 := /usr/lib/libglibmm-2.4.*
+GLIBMM2-4_LIB_2 := /usr/lib64/libglibmm-2.4.*
 ifneq ($(wildcard $(GLIBMM2-4_LIB)),)
   HAS_GLIBMM2-4_LIB := 1
 else ifneq ($(wildcard $(GLIBMM2-4_LIB_2)),)
@@ -169,7 +169,7 @@ else
 endif
 
 GLPK_LIB := /usr/local/lib/libglpk.a
-GLPK_LIB_2 := /usr/lib/libglpk.a
+GLPK_LIB_2 := /usr/lib64/libglpk.a
 ifneq ($(wildcard $(GLPK_LIB)),)
   HAS_GLPK_LIB := 1
 else ifneq ($(wildcard $(GLPK_LIB)),)
@@ -2335,6 +2335,9 @@ print:
 	@echo "YACC++DERIVEDHEADERS = " $(YACCPPDERIVEDHEADERS)
 	@echo "SCRIPT_FILES = " $(SCRIPT_FILES)
 	@echo "SCRIPT_SOURCES = " $(SCRIPT_SOURCES)
+
+print_binaries:
+	@echo "BINARIES = " $(BINARIES)
 
 print2:
 	@echo "DERIVEDSOURCES = " $(DERIVEDSOURCES)

@@ -67,9 +67,12 @@ COPY /launch_in_docker.sh /launch_in_docker.sh
 
 RUN echo 'if [ "$U_USER" == "" ]; then \
 printf "\n\
+#
+# To run GreatSPN from inside a docker container, run
+#
 XSOCK=/tmp/.X11-unix \n\
 XAUTH=/tmp/.docker.xauth \n\
-xauth nlist :0 | sed -e \'s/^..../ffff/\' | xauth -f $XAUTH nmerge - \n\
+xauth nlist :0 | sed -e \"s/^..../ffff/\" | xauth -f $XAUTH nmerge - \n\
 docker run -ti --rm \ \n\
     -v $XSOCK:$XSOCK \ \n\
     -v $XAUTH:$XAUTH \ \n\
@@ -82,7 +85,7 @@ docker run -ti --rm \ \n\
     -v `pwd`:/usr/local/GreatSPN/models/usermodels \ \n\
     -w /usr/local/GreatSPN/models/usermodels \ \n\
      millergarym/greatspn \n\
-    \n"; exit 1; fi; /lauch_in_docker.sh;' > /launch.sh
+    \n"; exit 1; fi; /launch_in_docker.sh;' > /launch.sh
 
 RUN chmod +x /launch.sh
 CMD [ "sh", "-c", "/launch.sh" ]

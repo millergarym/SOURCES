@@ -1,1 +1,1 @@
-docker build -t gspn .. -f fedora.dockerfile
+docker build -t millergarym/greatspn .. -f fedora.dockerfile

@@ -12,4 +12,4 @@ docker run -ti --rm \
     -e U_GID=`id -g` \
     -v `pwd`:/SOURCES/usermodels \
     -w /SOURCES/usermodels \
-    gspn
+    millergarym/greatspn 

@@ -6,11 +6,11 @@ docker run -ti --rm \
     -v $XSOCK:$XSOCK \
     -v $XAUTH:$XAUTH \
     -e XAUTHORITY=$XAUTH \
-    -e HOME=/SOURCES/usermodels \
+    -e HOME=/usr/local/GreatSPN/models/usermodels \
     -e U_USER=$USER \
     -e U_UID=`id -u` \
     -e U_GID=`id -g` \
     -e DISPLAY=:1 \
-    -v `pwd`:/SOURCES/usermodels \
-    -w /SOURCES/usermodels \
+    -v `pwd`:/usr/local/GreatSPN/models/usermodels \
+    -w /usr/local/GreatSPN/models/usermodels \
     gspn

@@ -80,6 +80,9 @@ RUN dnf -y install \
 
 
 COPY --from=builder /usr/local/GreatSPN /usr/local/GreatSPN
+RUN mkdir /usr/local/GreatSPN/models/development
+COPY --from=builder /SOURCES/JavaGUI/*.PNPRO /usr/local/GreatSPN/development
+
 ENV DISPLAY :0
 RUN set +o history
 COPY /launch_in_docker.sh /launch_in_docker.sh

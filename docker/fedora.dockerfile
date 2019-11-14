@@ -67,22 +67,22 @@ COPY /launch_in_docker.sh /launch_in_docker.sh
 
 RUN echo 'if [ "$U_USER" == "" ]; then \
 printf "\n\
-#
-# To run GreatSPN from inside a docker container, run
-#
+\#
+\# To run GreatSPN from inside a docker container, run
+\#
 XSOCK=/tmp/.X11-unix \n\
 XAUTH=/tmp/.docker.xauth \n\
 xauth nlist :0 | sed -e \"s/^..../ffff/\" | xauth -f $XAUTH nmerge - \n\
 docker run -ti --rm \ \n\
-    -v $XSOCK:$XSOCK \ \n\
-    -v $XAUTH:$XAUTH \ \n\
-    -e XAUTHORITY=$XAUTH \ \n\
+    -v \$XSOCK:\$XSOCK \ \n\
+    -v $XAUTH:\$XAUTH \ \n\
+    -e XAUTHORITY=\$XAUTH \ \n\
     -e HOME=/usr/local/GreatSPN/models/usermodels \ \n\
-    -e U_USER=$USER \ \n\
-    -e U_UID=`id -u` \ \n\
-    -e U_GID=`id -g` \ \n\
+    -e U_USER=\$USER \ \n\
+    -e U_UID=\`id -u\` \ \n\
+    -e U_GID=\`id -g\` \ \n\
     -e DISPLAY=:0 \ \n\
-    -v `pwd`:/usr/local/GreatSPN/models/usermodels \ \n\
+    -v \`pwd\`:/usr/local/GreatSPN/models/usermodels \ \n\
     -w /usr/local/GreatSPN/models/usermodels \ \n\
      millergarym/greatspn \n\
     \n"; exit 1; fi; /launch_in_docker.sh;' > /launch.sh

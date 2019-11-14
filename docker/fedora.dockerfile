@@ -51,10 +51,11 @@ RUN cd /SOURCES; make print_binaries
 RUN cd /SOURCES; make JavaGUI-antlr
 RUN cd /SOURCES; make java-jars
 # RUN cd /SOURCES; make print
-# RUN cd /SOURCES; make derived_objects
-# RUN cd /SOURCES; make libraries
-# RUN cd /SOURCES; make binaries
+RUN cd /SOURCES; make derived_objects
+RUN cd /SOURCES; make libraries
+RUN cd /SOURCES; make binaries
 RUN cd /SOURCES; make scripts
+RUN cd /SOURCES; make install
 
 # # RUN cd /SOURCES; CFLAGS="-O2" CPPFLAGS="-O2" LDFLAGS="-O2" \
 # #     make -k -j 4 derived_objects

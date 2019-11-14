@@ -41,7 +41,8 @@ ENABLE_Cxx14 ?= -std=c++17
 
 # External libraries
 FLEX-INCLUDE :=
-FLEX-LIB := -lfl
+FLEX-LIB := 
+#-lfl
 
 GLIB-INCLUDE := $(shell pkg-config --static --silence-errors --cflags glib-2.0)
 GLIB-LIB := $(shell pkg-config --static --silence-errors --libs glib-2.0)
@@ -53,9 +54,6 @@ MOTIF-INCLUDE :=
 MOTIF-LIB := 
 
 OPENGL-LIB := -lGL -lGLU -lglut
-
-BOOST_Cxx=/usr/include
-BOOST_Cxx_LIB=/usr/lib
 
 # Destination directories
 OBJDIR := objects
@@ -76,7 +74,7 @@ ifeq ($(UNAME_S),Darwin)
    MOTIF-INCLUDE := -I/usr/OpenMotif/include
    MOTIF-LIB := -L/usr/OpenMotif/lib
    UIL := /usr/OpenMotif/bin/uil
-   FLEX-LIB := -lfl -L/usr/local/opt/flex/lib
+#    FLEX-LIB := -lfl -L/usr/local/opt/flex/lib
    OPENGL-LIB := -lgl -lglu -lglut
    CC := gcc -g -c -std=c99 -Wno-deprecated-register
    CPP := g++ -g -c -std=c++14 -Wno-unused-local-typedef -Wno-deprecated-register
@@ -85,9 +83,6 @@ ifeq ($(UNAME_S),Darwin)
    CFLAGS += -I/usr/include/malloc -I/usr/local/include/
    LDFLAGS += -L/usr/local/lib/
    ENABLE_Cxx14 := -std=c++14 -stdlib=libc++ -U__STRICT_ANSI__
-   BOOST_Cxx=/usr/local/include
-   BOOST_Cxx_LIB=/usr/local/lib
-   INCLUDE_ELVIO_CPP_SOLVER := 1
    LAUNCH4J := java -jar JavaGUI/launch4j-macosx/launch4j.jar
 
    
@@ -105,7 +100,6 @@ ifeq ($(UNAME_S),Darwin)
 			  -Wno-implicit-int -Wno-empty-body
 
 endif
-INCLUDE_ELVIO_CPP_SOLVER := 0
 
 ### - Platform-specific variations - ###
 ifneq (,$(findstring Microsoft,$(UNAME_R)))
@@ -123,15 +117,43 @@ endif
 
 # have_command = $(eval $(1):=$(if $(shell which $(2)),1,))
 
-ifneq ($(shell which $(UIL)),$(UIL))
-  $(warning "OpenMotif is not installed. Some packages will not compile properly.")
-else
-  HAS_OPENMOTIF_LIB := 1
-endif
+##############################################################################
+# Dependency resolution
+##############################################################################
+# Macros used to simplify the work
 
-ifeq ($(shell which pkg-config),)
-  $(warning "The pkg-config tool is not installed. Some packages will not compile properly.")
-endif
+# search for a file $(2). If it exists, define variable HAS_$(1) to 1
+define search_file
+	$(if $(HAS_$(1)), , $(if $(wildcard $(2)), $(eval HAS_$(1):=1) ))
+endef
+# search for a library in path $(2). If it exists, define two variables:
+#  HAS_$(1) to 1,  LINK_$(1) to the -L/path and the additional rules $(3)
+define search_lib
+	$(if $(HAS_$(1)), , \
+	  $(if $(wildcard $(2)), \
+	    $(eval HAS_$(1):=1) ; $(eval LINK_$(1):=-L$(dir $(2)) $(3))  )\
+	 )
+endef
+define warn_missing
+	$(if $(HAS_$(1)), , $(warning Missing $(2). Some packages will not be compiled.) )
+endef
+##############################################################################
+
+$(call search_file,OPENMOTIF,$(UIL))
+$(call warn_missing,OPENMOTIF,OpenMotif)
+
+# ifneq ($(shell which $(UIL)),$(UIL))
+#   $(warning "OpenMotif is not installed. Some packages will not compile properly.")
+# else
+#   HAS_OPENMOTIF_LIB := 1
+# endif
+
+$(call search_file,PKGCONFIG,$(shell which pkg-config))
+$(call warn_missing,PKGCONFIG,pkg-config tool)
+
+# ifeq ($(shell which pkg-config),)
+#   $(warning "The pkg-config tool is not installed. Some packages will not compile properly.")
+# endif
 
 ifeq ($(GLIB-INCLUDE),)
   $(warning "The glib-2.0 library is not installed. Some packages will not compile properly.")
@@ -139,44 +161,58 @@ else
 	HAS_GLIB_LIB := 1
 endif
 
+$(call search_file,GRAPHMDP_LIB,/usr/local/lib/libgraphmdp.*,-lgraphmdp)
+$(call warn_missing,GRAPHMDP_LIB,GraphMDP library)
+# GRAPHMDP_LIB := /usr/local/lib/libgraphmdp.a
+# ifeq ($(wildcard $(GRAPHMDP_LIB)),)
+#   $(warning "The GraphMDP library is not installed. Some packages will not be compiled.")
+# else
+#   HAS_GRAPHMDP_LIB := 1
+# endif
 
-GRAPHMDP_LIB := /usr/local/lib/libgraphmdp.a
-ifeq ($(wildcard $(GRAPHMDP_LIB)),)
-  $(warning "The GraphMDP library is not installed. Some packages will not be compiled.")
-else
-  HAS_GRAPHMDP_LIB := 1
-endif
 
+$(call search_lib,LIBXMLPP2-6_LIB,/usr/local/lib/libxml++-2.6)
+$(call search_lib,LIBXMLPP2-6_LIB,/usr/lib/libxml++-2.6)
+$(call search_lib,LIBXMLPP2-6_LIB,/usr/lib64/libxml++-2.6)
+$(call warn_missing,LIBXMLPP2-6_LIB,libXML++-2.6 library)
+# LIBXMLPP2-6_LIB := /usr/local/lib/libxml++-2.6
+# LIBXMLPP2-6_LIB_2 := /usr/lib/libxml++-2.6
+# ifneq ($(wildcard $(LIBXMLPP2-6_LIB)),)
+#   HAS_LIBXMLPP2-6_LIB := 1
+# else ifneq ($(wildcard $(LIBXMLPP2-6_LIB_2)),)
+#   HAS_LIBXMLPP2-6_LIB := 1
+# else
+#   $(warning "The libXML++-2.6 library is not installed. Some packages will not be compiled.")
+# endif
 
-LIBXMLPP2-6_LIB := /usr/local/lib/libxml++-2.6
-LIBXMLPP2-6_LIB_2 := /usr/lib64/libxml++-2.6
-ifneq ($(wildcard $(LIBXMLPP2-6_LIB)),)
-  HAS_LIBXMLPP2-6_LIB := 1
-else ifneq ($(wildcard $(LIBXMLPP2-6_LIB_2)),)
-  HAS_LIBXMLPP2-6_LIB := 1
-else
-  $(warning "The libXML++-2.6 library is not installed. Some packages will not be compiled.")
-endif
+$(call search_lib,GLIBMM2-4_LIB,/usr/local/lib/libglibmm-2.4.*)
+$(call search_lib,GLIBMM2-4_LIB,/usr/lib/libglibmm-2.4.*)
+$(call search_lib,GLIBMM2-4_LIB,/usr/lib64/libglibmm-2.4.*)
+$(call warn_missing,GLIBMM2-4_LIB,glibmm-2.4 library)
+# GLIBMM2-4_LIB := /usr/local/lib/libglibmm-2.4.*
+# GLIBMM2-4_LIB_2 := /usr/lib/libglibmm-2.4.*
+# ifneq ($(wildcard $(GLIBMM2-4_LIB)),)
+#   HAS_GLIBMM2-4_LIB := 1
+# else ifneq ($(wildcard $(GLIBMM2-4_LIB_2)),)
+#   HAS_GLIBMM2-4_LIB := 1
+# else
+#   $(warning "The glibmm-2.4 library is not installed. Some packages will not be compiled.")
+# endif
 
-GLIBMM2-4_LIB := /usr/local/lib/libglibmm-2.4.*
-GLIBMM2-4_LIB_2 := /usr/lib64/libglibmm-2.4.*
-ifneq ($(wildcard $(GLIBMM2-4_LIB)),)
-  HAS_GLIBMM2-4_LIB := 1
-else ifneq ($(wildcard $(GLIBMM2-4_LIB_2)),)
-  HAS_GLIBMM2-4_LIB := 1
-else
-  $(warning "The glibmm-2.4 library is not installed. Some packages will not be compiled.")
-endif
-
-GLPK_LIB := /usr/local/lib/libglpk.a
-GLPK_LIB_2 := /usr/lib64/libglpk.a
-ifneq ($(wildcard $(GLPK_LIB)),)
-  HAS_GLPK_LIB := 1
-else ifneq ($(wildcard $(GLPK_LIB)),)
-  HAS_GLPK_LIB := 1
-else
-  $(warning "The GLPJ library is not installed. Some packages will not be compiled.")
-endif
+$(call search_lib,GLPK_LIB,/usr/local/lib/libglpk.*,-lglpk)
+$(call search_lib,GLPK_LIB,/usr/lib/libglpk.*,-lglpk)
+$(call search_lib,GLPK_LIB,/usr/lib64/libglpk.*,-lglpk)
+$(call warn_missing,GLPK_LIB,GLPK library)
+# $(info GLPK_LIB  $(HAS_GLPK_LIB)  $(LINK_GLPK_LIB))
+# GLPK_LIB := /usr/local/lib/libglpk.a
+# GLPK_LIB_2 := /usr/lib/libglpk.a
+# ifneq ($(wildcard $(GLPK_LIB)),)
+#   HAS_GLPK_LIB := 1
+# else ifneq ($(wildcard $(GLPK_LIB)),)
+#   HAS_GLPK_LIB := 1
+# else
+#   $(warning "The GLPJ library is not installed. Some packages will not be compiled.")
+# endif
 
 
 # LP_SOLVE_LIB := /usr/local/lib/liblpsolve55.a
@@ -186,87 +222,118 @@ endif
 #   HAS_LP_SOLVE_LIB := 1
 # endif
 
-LP_SOLVE_LIB_1 := /usr/include/lpsolve/lp_lib.h
-LP_SOLVE_LIB_2 := /usr/local/include/lp_lib.h
-LP_SOLVE_LIB_3 := /usr/local/include/lpsolve/lp_lib.h
-ifeq ($(wildcard $(LP_SOLVE_LIB_1)),)
-  ifeq ($(wildcard $(LP_SOLVE_LIB_2)),)
-    ifeq ($(wildcard $(LP_SOLVE_LIB_3)),)
-      $(warning "The lp-solve package is not installed. Some packages will not be compiled.")
-    else
-      HAS_LP_SOLVE_LIB := 1
-      LINK_LP_SOLVE_LIB := -L/usr/local/lib -llpsolve55
-      INCLUDE_LP_SOLVE_LIB := -DHAS_LP_SOLVE_LIB=1 -I/usr/local/include/lpsolve/
-    endif
-  else
-    HAS_LP_SOLVE_LIB := 1
-    LINK_LP_SOLVE_LIB := -L/usr/local/lib -llpsolve55 -lcolamd
-    INCLUDE_LP_SOLVE_LIB := -DHAS_LP_SOLVE_LIB=1
-  endif
-else
-  HAS_LP_SOLVE_LIB := 1
-  LINK_LP_SOLVE_LIB := -L/usr/lib64 -L/usr/lib/lp_solve/ -llpsolve55 -ldl -lcolamd
-  INCLUDE_LP_SOLVE_LIB := -DHAS_LP_SOLVE_LIB=1 -I/usr/include/lpsolve/
+$(call search_lib,LP_SOLVE_LIB,/usr/local/lib/liblpsolve55.*,-llpsolve55 -ldl -lcolamd)
+$(call search_lib,LP_SOLVE_LIB,/usr/lib/liblpsolve55.*,-llpsolve55 -ldl -lcolamd)
+$(call search_lib,LP_SOLVE_LIB,/usr/lib64/liblpsolve55.*,-llpsolve55 -ldl -lcolamd)
+$(call warn_missing,LP_SOLVE_LIB,lp_solve55 library)
+ifdef HAS_LP_SOLVE_LIB
+	INCLUDE_LP_SOLVE_LIB := -DHAS_LP_SOLVE_LIB=1 -I/usr/local/include/lpsolve/ -I/usr/include/lpsolve/
 endif
+# $(info LP_SOLVE_LIB  $(HAS_LP_SOLVE_LIB)  $(LINK_LP_SOLVE_LIB)  $(INCLUDE_LP_SOLVE_LIB))
 
-GMP_LIBRARY_1 := /usr/include/gmpxx.h
-GMP_LIBRARY_2 := /usr/local/include/gmpxx.h
-ifeq ($(wildcard $(GMP_LIBRARY_1)),)
-  ifeq ($(wildcard $(GMP_LIBRARY_2)),)
-    $(warning "The GMP library is not installed. Some packages will not be compiled.")
-  else
-    HAS_GMP_LIBRARY := 1
-    LINK_GMP_LIBRARY := -L/usr/local/lib -lgmpxx -lgmp
-    INCLUDE_GMP_LIBRARY := -DHAS_GMP_LIBRARY=1
-  endif
-else
-  HAS_GMP_LIBRARY := 1
-  LINK_GMP_LIBRARY := -L/usr/lib64 -lgmpxx -lgmp
-  INCLUDE_GMP_LIBRARY := -DHAS_GMP_LIBRARY=1
-endif
+# LP_SOLVE_LIB_1 := /usr/include/lpsolve/lp_lib.h
+# LP_SOLVE_LIB_2 := /usr/local/include/lp_lib.h
+# LP_SOLVE_LIB_3 := /usr/local/include/lpsolve/lp_lib.h
+# ifeq ($(wildcard $(LP_SOLVE_LIB_1)),)
+#   ifeq ($(wildcard $(LP_SOLVE_LIB_2)),)
+#     ifeq ($(wildcard $(LP_SOLVE_LIB_3)),)
+#       $(warning "The lp-solve package is not installed. Some packages will not be compiled.")
+#     else
+#       HAS_LP_SOLVE_LIB := 1
+#       LINK_LP_SOLVE_LIB := -L/usr/local/lib -llpsolve55
+#       INCLUDE_LP_SOLVE_LIB := -DHAS_LP_SOLVE_LIB=1 -I/usr/local/include/lpsolve/
+#     endif
+#   else
+#     HAS_LP_SOLVE_LIB := 1
+#     LINK_LP_SOLVE_LIB := -L/usr/local/lib -llpsolve55 -lcolamd
+#     INCLUDE_LP_SOLVE_LIB := -DHAS_LP_SOLVE_LIB=1
+#   endif
+# else
+#   HAS_LP_SOLVE_LIB := 1
+#   LINK_LP_SOLVE_LIB := -L/usr/lib64 -L/usr/lib/lp_solve/ -llpsolve55 -ldl -lcolamd
+#   INCLUDE_LP_SOLVE_LIB := -DHAS_LP_SOLVE_LIB=1 -I/usr/include/lpsolve/
+# endif
 
-ifeq ($(shell which javac),)
-  $(warning "Java JDK is not installed. Some packages will not compile properly.")
-else
-  HAS_JAVA_DEVELOPMENT_KIT := 1
-  # Test for Apache ANT
-  ifeq ($(shell which ant),)
-    $(warning "Apache ANT build system is not installed. Some packages will not compile properly.")
-  else
-    HAS_APACHE_ANT := 1
-  endif
-  # Test for ANTLR version 4
-  # ifeq ($(shell which antlr4),)
-  #   $(warning "ANTLRv4 is not installed. Some packages will not compile properly.")
-  # else
-  #   HAS_ANTLRv4 := 1
-  # endif
+$(call search_lib,GMP_LIB,/usr/local/lib/libgmpxx.*,-lgmpxx -lgmp)
+$(call search_lib,GMP_LIB,/usr/lib/libgmpxx.*,-lgmpxx -lgmp)
+$(call search_lib,GMP_LIB,/usr/lib64/libgmpxx.*,-lgmpxx -lgmp)
+$(call warn_missing,GMP_LIB,GMP library)
+ifdef HAS_GMP_LIB
+	INCLUDE_GMP_LIB := -DHAS_GMP_LIB=1
 endif
+# $(info GMP_LIB  $(HAS_GMP_LIB)  $(LINK_GMP_LIB)  $(INCLUDE_GMP_LIB))
 
-ifeq ($(wildcard $(BOOST_Cxx)/boost/config.hpp), )
-  $(warning "Boost C++ is not installed. Some packages will not be compiled.")
-else
-  HAVE_BOOST_Cxx := 1
-endif
 
-ifeq ($(wildcard JavaGUI/launch4j-macosx/launch4j.jar), )
-  #$(warning "Boost C++ is not installed. Some packages will not be compiled.")
-else
-  ifdef LAUNCH4J
-    HAVE_LAUNCH4J := 1
-  endif
-endif
+# GMP_LIB_1 := /usr/include/gmpxx.h
+# GMP_LIB_2 := /usr/local/include/gmpxx.h
+# ifeq ($(wildcard $(GMP_LIB_1)),)
+#   ifeq ($(wildcard $(GMP_LIB_2)),)
+#     $(warning "The GMP library is not installed. Some packages will not be compiled.")
+#   else
+#     HAS_GMP_LIB := 1
+#     LINK_GMP_LIB := -L/usr/local/lib -lgmpxx -lgmp
+#     INCLUDE_GMP_LIB := -DHAS_GMP_LIB=1
+#   endif
+# else
+#   HAS_GMP_LIB := 1
+#   LINK_GMP_LIB := -L/usr/lib64 -lgmpxx -lgmp
+#   INCLUDE_GMP_LIB := -DHAS_GMP_LIB=1
+# endif
+
+$(call search_file,JAVA_DEVELOPMENT_KIT,$(shell which javac))
+$(call warn_missing,JAVA_DEVELOPMENT_KIT,Java JDK)
+
+$(call search_file,APACHE_ANT,$(shell which ant))
+$(call warn_missing,APACHE_ANT,Apache ANT)
+
+# ifeq ($(shell which javac),)
+#   $(warning "Java JDK is not installed. Some packages will not compile properly.")
+# else
+#   HAS_JAVA_DEVELOPMENT_KIT := 1
+#   # Test for Apache ANT
+#   ifeq ($(shell which ant),)
+#     $(warning "Apache ANT build system is not installed. Some packages will not compile properly.")
+#   else
+#     HAS_APACHE_ANT := 1
+#   endif
+#   # Test for ANTLR version 4
+#   # ifeq ($(shell which antlr4),)
+#   #   $(warning "ANTLRv4 is not installed. Some packages will not compile properly.")
+#   # else
+#   #   HAS_ANTLRv4 := 1
+#   # endif
+# endif
+
+$(call search_lib,BOOST_CXX_LIB,/usr/local/lib/libboost_context.*)
+$(call search_lib,BOOST_CXX_LIB,/usr/lib/libboost_context.*)
+$(call search_lib,BOOST_CXX_LIB,/usr/lib64/libboost_context.*)
+$(call warn_missing,BOOST_CXX_LIB,Boost C++ library)
+# $(info BOOST_CXX_LIB  $(HAS_BOOST_CXX_LIB)  $(LINK_BOOST_CXX_LIB)  $(INCLUDE_BOOST_CXX_LIB))
+
+# ifeq ($(wildcard $(BOOST_Cxx)/boost/config.hpp), )
+#   $(warning "Boost C++ is not installed. Some packages will not be compiled.")
+# else
+#   HAS_BOOST_CXX_LIB := 1
+# endif
+
+# ifeq ($(wildcard JavaGUI/launch4j-macosx/launch4j.jar), )
+#   #$(warning ".")
+# else
+#   ifdef LAUNCH4J
+#     HAVE_LAUNCH4J := 1
+#   endif
+# endif
 
 
 ifneq ("$(wildcard /home/user/Desktop/HowToODE-SDE)","")
   IS_VBOX_VERSION71 := 1
-  $(warning "GreatSPN virtual machine version 7.1")
+  $(info "GreatSPN virtual machine version 7.1")
 endif
 
 ifneq ("$(wildcard /home/user/.greatspn-on-vbox)","")
   IS_VBOX_VERSION71 := 1
   HAS_VBOX_MARK := 1
-  $(warning "This is the GreatSPN distribution on the virtual machine")
+  $(info "This is the GreatSPN distribution on the virtual machine")
 endif
 
 ifeq ($(IS_VBOX_VERSION71),1)
@@ -279,6 +346,18 @@ endif
 
 ifeq ($(IS_VBOX_VERSION71),1)
   INCLUDE_ELVIO_CPP_SOLVER := 1
+endif
+ifneq ("$(wildcard ~/.extra-greatspn-solvers)","")
+  INCLUDE_ELVIO_CPP_SOLVER := 1
+endif
+
+ifeq ($(INCLUDE_ELVIO_CPP_SOLVER),1)
+  ifneq ($(wildcard JavaGUI/launch4j-macosx/launch4j.jar), )
+    ifdef LAUNCH4J
+      $(info Have Launch4j)
+      HAVE_LAUNCH4J := 1
+    endif
+  endif
 endif
 
 ifneq ("$(wildcard ../PRIVATE)","")
@@ -832,11 +911,11 @@ $(OBJDIR)/RGMEDD/WN/SOURCE/AUTOMA/AutoParser.yy.o: $(OBJDIR)/RGMEDD/WN/SOURCE/AU
 RGMEDD2_CFLAGS := $(CFLAGS) $(call generate_WN_FLAGS,TOOL_RGMEDD2,RGMEDD2) \
 				          $(FLEX-INCLUDE) 
 RGMEDD2_CPPFLAGS := $(CPPFLAGS) $(ENABLE_Cxx14) -Wno-deprecated-register \
-                    -I/usr/local/include $(INCLUDE_GMP_LIBRARY) \
+                    -I/usr/local/include $(INCLUDE_GMP_LIB) \
                     $(RGMEDD2_CFLAGS) -I/usr/local/include 
                     
                     # -D_GLIBCXX_DEBUG=1
-RGMEDD2_LDFLAGS := -L/usr/local/lib $(LDFLAGS) $(FLEX-LIB) -lmeddly $(LINK_GMP_LIBRARY)
+RGMEDD2_LDFLAGS := -L/usr/local/lib $(LDFLAGS) $(FLEX-LIB) -lmeddly $(LINK_GMP_LIB)
 RGMEDD2_SOURCES := WN/SOURCE/SHARED/service.c \
 				   WN/SOURCE/SHARED/ealloc.c \
 				   WN/SOURCE/SHARED/token.c \
@@ -883,7 +962,7 @@ RGMEDD2_SOURCES := WN/SOURCE/SHARED/service.c \
 # RGMEDD2_LEX_WN/SOURCE/AUTOMA/AutoLexer.l = $(LEX) -P kk --header-file=$(@:.c=.h)
 # RGMEDD2_YACCPP_WN/SOURCE/AUTOMA/AutoParser.yy := byacc -v -p kk -d
 RGMEDD2_YACCPP_WN/SOURCE/RGMEDD2/CTLParser.yy := byacc -p mm -v -d
-RGMEDD2_LEXPP_WN/SOURCE/RGMEDD2/CTLLexer.ll = $(LEXPP) -+ --header-file=$(@:.cpp=.h)
+RGMEDD2_LEXPP_WN/SOURCE/RGMEDD2/CTLLexer.ll = $(LEXPP) -+ -P mm --header-file=$(@:.cpp=.h)
 RGMEDD2_LD := $(LDPP) -shared-libgcc
 
 $(OBJDIR)/RGMEDD2/WN/SOURCE/RGMEDD2/CTLParser.yy.o: $(OBJDIR)/RGMEDD2/WN/SOURCE/RGMEDD2/CTLLexer.ll.cpp
@@ -919,11 +998,11 @@ TARGETS += RGMEDD2
 RGMEDD3_CFLAGS := $(CFLAGS) $(call generate_WN_FLAGS,TOOL_RGMEDD3,RGMEDD3) \
                   $(FLEX-INCLUDE) 
 RGMEDD3_CPPFLAGS := $(CPPFLAGS) $(ENABLE_Cxx14) \
-                    -I/usr/local/include $(INCLUDE_GMP_LIBRARY) \
+                    -I/usr/local/include $(INCLUDE_GMP_LIB) \
                     $(RGMEDD3_CFLAGS) -I/usr/local/include 
                     
                     # -D_GLIBCXX_DEBUG=1 /usr/local/lib/libmeddly.a
-RGMEDD3_LDFLAGS := -L/usr/local/lib $(LDFLAGS) $(FLEX-LIB) -lmeddly $(LINK_GMP_LIBRARY)
+RGMEDD3_LDFLAGS := -L/usr/local/lib $(LDFLAGS) $(FLEX-LIB) -lmeddly $(LINK_GMP_LIB)
           #-lmeddly 
 RGMEDD3_SOURCES := WN/SOURCE/SHARED/service.c \
            WN/SOURCE/SHARED/ealloc.c \
@@ -1484,7 +1563,7 @@ MDP_includes := $(CPPFLAGS) `pkg-config --static --cflags glib-2.0 libxml++-2.6 
 MDP_SOURCES := WN/SOURCE/MDWN/mdp_main.cc WN/SOURCE/MDWN/general.cpp 
 MDP_CPPFLAGS := $(MDP_includes)
 MDP_LD := $(LDPP)
-MDP_LDFLAGS := $(LDFLAGS) $(X11-LIB) -lgraphmdp $(OPENGL-LIB) -lglpk \
+MDP_LDFLAGS := $(LDFLAGS) $(X11-LIB) $(LINK_GRAPHMDP_LIB) $(OPENGL-LIB) $(LINK_GLPK_LIB) \
 	`pkg-config --static --libs glib-2.0 libxml++-2.6 glibmm-2.4`
 
 ifdef HAS_GRAPHMDP_LIB
@@ -1503,7 +1582,7 @@ RG2RRG_SOURCES := WN/SOURCE/MDWN/rg2rrg.cpp \
 RG2RRG_CPPFLAGS := $(MDP_includes) 
 RG2RRG_LD := $(LDPP)
 RG2RRG_DEPENDS := $(LIBDIR)/libgspnMCESRG.a
-RG2RRG_LDFLAGS := $(LDFLAGS) -L$(LIBDIR) -lgspnMCESRG -lm -lglpk $(FLEX-LIB)
+RG2RRG_LDFLAGS := $(LDFLAGS) -L$(LIBDIR) -lgspnMCESRG -lm $(LINK_GLPK_LIB) $(FLEX-LIB)
 
 
 MDWN2WN_SOURCES := WN/SOURCE/MDWN/mdwn2wn.cpp \
@@ -1512,7 +1591,7 @@ MDWN2WN_SOURCES := WN/SOURCE/MDWN/mdwn2wn.cpp \
 MDWN2WN_CPPFLAGS := $(MDP_includes)
 MDWN2WN_LD := $(LDPP)
 MDWN2WN_DEPENDS := $(LIBDIR)/libgspnMCESRG.a
-MDWN2WN_LDFLAGS := $(LDFLAGS) -L$(LIBDIR) -lgspnMCESRG -lm -lglpk $(FLEX-LIB)
+MDWN2WN_LDFLAGS := $(LDFLAGS) -L$(LIBDIR) -lgspnMCESRG -lm $(LINK_GLPK_LIB) $(FLEX-LIB)
 
 GDTMC_SOURCES := WN/SOURCE/MDWN/GenDTMC.cpp \
 				 WN/SOURCE/MDWN/functionGenDTMC.cpp \
@@ -1520,14 +1599,14 @@ GDTMC_SOURCES := WN/SOURCE/MDWN/GenDTMC.cpp \
 GDTMC_CPPFLAGS := $(MDP_includes)
 GDTMC_LD := $(LDPP)
 GDTMC_DEPENDS := $(LIBDIR)/libgspnMCESRG.a
-GDTMC_LDFLAGS := $(LDFLAGS) -L$(LIBDIR) -lgspnMCESRG -lm -lglpk $(FLEX-LIB)
+GDTMC_LDFLAGS := $(LDFLAGS) -L$(LIBDIR) -lgspnMCESRG -lm $(LINK_GLPK_LIB) $(FLEX-LIB)
 
 PARSER_SOURCES := WN/SOURCE/MDWN/parser.cpp \
 				  WN/SOURCE/MDWN/general.cpp
 PARSER_CPPFLAGS := $(MDP_includes)
 PARSER_LD := $(LDPP)
 PARSER_DEPENDS := $(LIBDIR)/libgspnMCESRG.a
-PARSER_LDFLAGS := $(LDFLAGS) -L$(LIBDIR) -lgspnMCESRG -lm -lglpk $(FLEX-LIB)
+PARSER_LDFLAGS := $(LDFLAGS) -L$(LIBDIR) -lgspnMCESRG -lm $(LINK_GLPK_LIB) $(FLEX-LIB)
 
 mdwn2mdp_SOURCEFILE := WN/SOURCE/MDWN/MDWN2MDP.sh
 mdwnsolve_SOURCEFILE := WN/SOURCE/MDWN/MDWNSolve.sh
@@ -1914,11 +1993,11 @@ CSLTA_CPPFLAGS := $(CPPFLAGS) -Wall $(ENABLE_Cxx14)
 CSLTA_LEX := flex
 CSLTA_YACC := bison -d
 CSLTA_LD := $(LDPP)
-CSLTA_LDFLAGS :=  $(LDFLAGS) $(BOOST_Cxx_LIB)/lib/libboost_timer.a \
-                  $(BOOST_Cxx_LIB)/lib/libboost_system.a \
-                  $(BOOST_Cxx_LIB)/lib/libboost_chrono.a
+CSLTA_LDFLAGS :=  $(LDFLAGS) $(LINK_BOOST_CXX_LIB)/lib/libboost_timer.a \
+                  $(LINK_BOOST_CXX_LIB)/lib/libboost_system.a \
+                  $(LINK_BOOST_CXX_LIB)/lib/libboost_chrono.a
 
-ifdef HAVE_BOOST_Cxx
+ifdef HAS_BOOST_CXX_LIB
   # TARGETS += CSLTA
 endif
 
@@ -1959,7 +2038,7 @@ $(OBJDIR)/DSPN-Tool/NSRC/DSPN-Tool/CSLTA.o: $(OBJDIR)/DSPN-Tool/NSRC/DSPN-Tool/n
 
 NSRC/DSPN-Tool/lexer.ll: $(OBJDIR)/DSPN-Tool/NSRC/DSPN-Tool/newparser.lyy.o bin/lemon
 
-DSPN-Tool_CPPFLAGS := -O2 -Wall $(ENABLE_Cxx14) -I$(BOOST_Cxx) \
+DSPN-Tool_CPPFLAGS := -O2 -Wall $(ENABLE_Cxx14) \
                       -Iobjects/DSPN-Tool/NSRC/DSPN-Tool/ \
                       -Wno-unused-function \
                       -DNDEBUG=1 
@@ -1980,7 +2059,6 @@ NSRC/DSPN-Tool/lexer.ll: $(OBJDIR)/DSPN-Tool-Debug/NSRC/DSPN-Tool/newparser.lyy.
 DSPN-Tool-Debug_SOURCES := $(DSPN-Tool_SOURCES)
 DSPN-Tool-Debug_CPPFLAGS := -Wall $(ENABLE_Cxx14) \
                       		-Iobjects/DSPN-Tool-Debug/NSRC/DSPN-Tool/ \
-                      		-I$(BOOST_Cxx) \
                       		-g -Wall -Wextra -Wno-unused-parameter \
                       		-Wno-unused-function \
                        		-DUSE_PRIVATE_TYPES=1 -D_GLIBCXX_DEBUG=1
@@ -1996,7 +2074,7 @@ endif
 
 alphaFactory_SOURCES := NSRC/alphaFactory/alphaFactory.cpp
 
-alphaFactory_CPPFLAGS := $(CPPFLAGS) -Wall $(ENABLE_Cxx14) -I$(BOOST_Cxx) \
+alphaFactory_CPPFLAGS := $(CPPFLAGS) -Wall $(ENABLE_Cxx14) \
                          -Wno-unused-function 
 alphaFactory_LD := $(LDPP)
 

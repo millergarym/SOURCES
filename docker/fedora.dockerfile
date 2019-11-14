@@ -1,4 +1,4 @@
-FROM fedora
+FROM fedora as builder
 
 RUN dnf -y install git
 
@@ -64,17 +64,23 @@ RUN cd /SOURCES; make install
 
 # RUN cd /SOURCES; make install
 
-RUN echo 'PATH=$PATH:/SOURCES/scripts' >> /etc/profile.d/greatspn.path.sh
+# RUN echo 'PATH=$PATH:/SOURCES/scripts' >> /etc/profile.d/greatspn.path.sh
 # RUN echo 'unset HISTFILE' >> /etc/profile.d/disable.history.sh
-
-ENV DISPLAY :0
-RUN set +o history
-
-# CMD [ "/SOURCE/greatspn_in_docker.sh" ]
-CMD [ "/SOURCES/launch_in_docker.sh" ]
 
 
 # XSOCK=/tmp/.X11-unix
 # XAUTH=/tmp/.docker.xauth
 # xauth nlist :0 | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
 # docker run -ti -v $XSOCK:$XSOCK -v $XAUTH:$XAUTH -e XAUTHORITY=$XAUTH xeyes
+
+FROM fedora
+
+RUN dnf -y install \
+    graphviz ant
+
+
+COPY --from=builder /usr/local/GreatSPN /usr/local/GreatSPN
+ENV DISPLAY :0
+RUN set +o history
+COPY /launch_in_docker.sh /launch_in_docker.sh
+CMD [ "/launch_in_docker.sh" ]

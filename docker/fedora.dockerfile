@@ -40,50 +40,49 @@ RUN cd meddly; \
     && make -j 4 \
     && make install
 
-# # Makefile:145: "The GraphMDP library is not installed. Some packages will not be compiled."
-# # Makefile:158: "The libXML++-2.6 library is not installed. Some packages will not be compiled."
-# # Makefile:168: "The glibmm-2.4 library is not installed. Some packages will not be compiled."
-# # Makefile:178: "The GLPJ library is not installed. Some packages will not be compiled."
-
 COPY / /SOURCES
 RUN cd /SOURCES; rm -r `find . -name .antlr` || true  
 RUN cd /SOURCES; make print_binaries
 RUN cd /SOURCES; make JavaGUI-antlr
 RUN cd /SOURCES; make java-jars
-# RUN cd /SOURCES; make print
 RUN cd /SOURCES; make derived_objects
 RUN cd /SOURCES; make libraries
 RUN cd /SOURCES; make binaries
 RUN cd /SOURCES; make scripts
 RUN cd /SOURCES; make install
 
-# # RUN cd /SOURCES; CFLAGS="-O2" CPPFLAGS="-O2" LDFLAGS="-O2" \
-# #     make -k -j 4 derived_objects
-# # RUN cd /SOURCES; CFLAGS="-O2" CPPFLAGS="-O2" LDFLAGS="-O2" \
-# #     make -k -j 4
-
-# RUN cd /SOURCES; make install
-
-# RUN echo 'PATH=$PATH:/SOURCES/scripts' >> /etc/profile.d/greatspn.path.sh
-# RUN echo 'unset HISTFILE' >> /etc/profile.d/disable.history.sh
-
-
-# XSOCK=/tmp/.X11-unix
-# XAUTH=/tmp/.docker.xauth
-# xauth nlist :0 | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
-# docker run -ti -v $XSOCK:$XSOCK -v $XAUTH:$XAUTH -e XAUTHORITY=$XAUTH xeyes
-
 FROM fedora
 
 RUN dnf -y install \
     graphviz ant
 
-
 COPY --from=builder /usr/local/GreatSPN /usr/local/GreatSPN
 RUN mkdir /usr/local/GreatSPN/models/development
-COPY --from=builder /SOURCES/JavaGUI/*.PNPRO /usr/local/GreatSPN/development/
+COPY /JavaGUI/*.PNPRO /usr/local/GreatSPN/development/
 
 ENV DISPLAY :0
 RUN set +o history
 COPY /launch_in_docker.sh /launch_in_docker.sh
-CMD [ "/launch_in_docker.sh" ]
+
+
+RUN echo 'if [ "$U_USER" == "" ]; then \
+printf "\n\
+XSOCK=/tmp/.X11-unix \n\
+XAUTH=/tmp/.docker.xauth \n\
+xauth nlist :0 | sed -e \'s/^..../ffff/\' | xauth -f $XAUTH nmerge - \n\
+docker run -ti --rm \ \n\
+    -v $XSOCK:$XSOCK \ \n\
+    -v $XAUTH:$XAUTH \ \n\
+    -e XAUTHORITY=$XAUTH \ \n\
+    -e HOME=/usr/local/GreatSPN/models/usermodels \ \n\
+    -e U_USER=$USER \ \n\
+    -e U_UID=`id -u` \ \n\
+    -e U_GID=`id -g` \ \n\
+    -e DISPLAY=:0 \ \n\
+    -v `pwd`:/usr/local/GreatSPN/models/usermodels \ \n\
+    -w /usr/local/GreatSPN/models/usermodels \ \n\
+     millergarym/greatspn \n\
+    \n"; exit 1; fi; /lauch_in_docker.sh;' > /launch.sh
+
+RUN chmod +x /launch.sh
+CMD [ "sh", "-c", "/launch.sh" ]
